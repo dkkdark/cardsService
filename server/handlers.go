@@ -59,6 +59,21 @@ func (s *ServiceImpl) LoginHandler(c echo.Context) error {
 
 func (s *ServiceImpl) GetUserByIDHandler(c echo.Context) error {
 	authToken := s.getAuthToken(c)
+	_, err := s.tokenService.ParseToken(authToken)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, &EmptyResponse{})
+	}
+	id := c.Param("id")
+
+	user, err := s.repository.GetUserById(id)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+	return c.JSON(http.StatusOK, &user)
+}
+
+func (s *ServiceImpl) GetUserByTokenHandler(c echo.Context) error {
+	authToken := s.getAuthToken(c)
 	token, err := s.tokenService.ParseToken(authToken)
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, &EmptyResponse{})

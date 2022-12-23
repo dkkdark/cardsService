@@ -50,23 +50,14 @@ func (s *ServiceImpl) CheckUser(params *CheckUserParams) (string, string, error)
 
 func (s *ServiceImpl) GetUserById(id string) (*User, error) {
 	user := &User{}
-
-	err := s.db.Transaction(func(tx *gorm.DB) error {
-		defer func() {
-			if r := recover(); r != nil {
-				tx.Rollback()
-			}
-		}()
-		err := s.db.Raw("SELECT * FROM users WHERE user_id = ?", id).First(user).Error
-		if err != nil {
-			if err == gorm.ErrRecordNotFound {
-				return ErrNotFound
-			}
-			return err
+	err := s.db.Raw("SELECT * FROM users WHERE user_id = ?", id).First(user).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrNotFound
 		}
-		return nil
-	})
-	return user, err
+		return nil, err
+	}
+	return user, nil
 }
 
 func (s *ServiceImpl) GetCards() ([]*Cards, error) {
@@ -79,7 +70,7 @@ func (s *ServiceImpl) GetCards() ([]*Cards, error) {
 				tx.Rollback()
 			}
 		}()
-		err := tx.Raw("SELECT * FROM cards as cr JOIN payment as pmt on cr.fk_payment_id = pmt.payment_id ORDER BY create_time DESC LIMIT 100").Find(&cards).Error
+		err := tx.Raw("SELECT * FROM cards as cr JOIN payment as pmt on cr.fk_payment_id = pmt.payment_id WHERE is_active = true ORDER BY create_time DESC LIMIT 100").Find(&cards).Error
 		if err != nil {
 			return err
 		}
@@ -125,53 +116,38 @@ func (s *ServiceImpl) GetCardsByUserId(id string) ([]*Cards, error) {
 
 func (s *ServiceImpl) GetUsers() ([]*User, error) {
 	users := make([]*User, 0)
-	err := s.db.Transaction(func(tx *gorm.DB) error {
-		defer func() {
-			if r := recover(); r != nil {
-				tx.Rollback()
-			}
-		}()
-		err := tx.Raw("SELECT * FROM users WHERE is_creator = true").Find(&users).Error
-		if err != nil {
-			return err
+	err := s.db.Raw("SELECT * FROM users WHERE is_creator = true").Find(&users).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrNotFound
 		}
-		return nil
-	})
-	return users, err
+		return nil, err
+	}
+	return users, nil
 }
 
 func (s *ServiceImpl) GetSpecializationById(id string) (*Specialization, error) {
 	spec := &Specialization{}
-	err := s.db.Transaction(func(tx *gorm.DB) error {
-		defer func() {
-			if r := recover(); r != nil {
-				tx.Rollback()
-			}
-		}()
-		err := tx.Raw("SELECT * FROM specialization WHERE spec_id = ?", id).First(spec).Error
-		if err != nil {
-			return err
+	err := s.db.Raw("SELECT * FROM specialization WHERE spec_id = ?", id).First(spec).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrNotFound
 		}
-		return nil
-	})
-	return spec, err
+		return nil, err
+	}
+	return spec, nil
 }
 
 func (s *ServiceImpl) GetAddInfById(id string) (*AdditionalInfo, error) {
 	addInf := &AdditionalInfo{}
-	err := s.db.Transaction(func(tx *gorm.DB) error {
-		defer func() {
-			if r := recover(); r != nil {
-				tx.Rollback()
-			}
-		}()
-		err := tx.Raw("SELECT * FROM additional_info WHERE add_inf_id = ?", id).First(addInf).Error
-		if err != nil {
-			return err
+	err := s.db.Raw("SELECT * FROM additional_info WHERE add_inf_id = ?", id).First(addInf).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrNotFound
 		}
-		return nil
-	})
-	return addInf, err
+		return nil, err
+	}
+	return addInf, nil
 }
 
 func (s *ServiceImpl) UpdateSpec(role string, params *UpdateSpecialization) error {
@@ -240,8 +216,16 @@ func (s *ServiceImpl) AddCard(role string, params *UpdateCard) error {
 		if err != nil {
 			return fmt.Errorf("error during UpdateSpec, err: %w", err)
 		}
-		for i, tag := range params.Tags {
-			err = s.db.Exec("CALL update_tags(?, ?, ?)", params.CardID, tag, i).Error
+
+		if len(params.Tags) > 0 {
+			for i, tag := range params.Tags {
+				err = s.db.Exec("CALL update_tags(?, ?, ?)", params.CardID, tag, i).Error
+				if err != nil {
+					return fmt.Errorf("error during UpdateSpec, err: %w", err)
+				}
+			}
+		} else {
+			err = s.db.Exec("DELETE FROM tags WHERE fk_card_id = ?", params.CardID).Error
 			if err != nil {
 				return fmt.Errorf("error during UpdateSpec, err: %w", err)
 			}
