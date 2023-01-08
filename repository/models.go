@@ -12,22 +12,29 @@ type Account struct {
 }
 
 type Cards struct {
-	ID          string  `json:"card_id" gorm:"column:card_id"`
-	Title       string  `json:"title"`
-	Description string  `json:"description"`
-	CreateTime  int64   `json:"create_time"`
-	IsActive    bool    `json:"is_active"`
-	UserID      string  `json:"user_id" gorm:"column:fk_user_id"`
-	PaymentID   string  `json:"payment_id" gorm:"column:fk_payment_id"`
-	Cost        float32 `json:"cost"`
-	IsAgreement bool    `json:"is_agreement"`
-	Prepayment  bool    `json:"is_prepayment" gorm:"column:is_prepayment"`
-	TagsList    []*Tags `json:"tags_list"`
+	ID          string       `json:"card_id" gorm:"column:card_id"`
+	Title       string       `json:"title"`
+	Description string       `json:"description"`
+	CreateTime  int64        `json:"create_time"`
+	IsActive    bool         `json:"is_active"`
+	UserID      string       `json:"user_id" gorm:"column:fk_user_id"`
+	PaymentID   string       `json:"payment_id" gorm:"column:fk_payment_id"`
+	Cost        float32      `json:"cost"`
+	IsAgreement bool         `json:"is_agreement"`
+	Prepayment  bool         `json:"is_prepayment" gorm:"column:is_prepayment"`
+	TagsList    []*Tags      `json:"tags_list"`
+	BookDates   []*BookDates `json:"book_date_list"`
 }
 
 type Tags struct {
 	ID     string `json:"id" gorm:"column:tag_id"`
 	Name   string `json:"name" gorm:"column:tags_name"`
+	CardID string `json:"card_id" gorm:"column:fk_card_id"`
+}
+
+type BookDates struct {
+	ID     string `json:"id" gorm:"column:id"`
+	Date   string `json:"date" gorm:"column:possible_date"`
 	CardID string `json:"card_id" gorm:"column:fk_card_id"`
 }
 

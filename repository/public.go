@@ -63,6 +63,7 @@ func (s *ServiceImpl) GetUserById(id string) (*User, error) {
 func (s *ServiceImpl) GetCards() ([]*Cards, error) {
 	cards := make([]*Cards, 0)
 	tags := make([]*Tags, 0)
+	bookdate := make([]*BookDates, 0)
 
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		defer func() {
@@ -80,7 +81,12 @@ func (s *ServiceImpl) GetCards() ([]*Cards, error) {
 			if err != nil {
 				return err
 			}
+			err = tx.Raw("SELECT * from book_date where fk_card_id = ?", c.ID).Find(&bookdate).Error
+			if err != nil {
+				return err
+			}
 			c.TagsList = tags
+			c.BookDates = bookdate
 		}
 		return nil
 	})
@@ -90,6 +96,7 @@ func (s *ServiceImpl) GetCards() ([]*Cards, error) {
 func (s *ServiceImpl) GetCardsByUserId(id string) ([]*Cards, error) {
 	cards := make([]*Cards, 0)
 	tags := make([]*Tags, 0)
+	bookdate := make([]*BookDates, 0)
 
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		defer func() {
@@ -107,7 +114,51 @@ func (s *ServiceImpl) GetCardsByUserId(id string) ([]*Cards, error) {
 			if err != nil {
 				return err
 			}
+			err = tx.Raw("SELECT * from book_date where fk_card_id = ?", c.ID).Find(&bookdate).Error
+			if err != nil {
+				return err
+			}
 			c.TagsList = tags
+			c.BookDates = bookdate
+		}
+		return nil
+	})
+	return cards, err
+}
+
+func (s *ServiceImpl) GetBookedCards(id string) ([]*Cards, error) {
+	cards := make([]*Cards, 0)
+	tags := make([]*Tags, 0)
+	bookdate := make([]*BookDates, 0)
+
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		defer func() {
+			if r := recover(); r != nil {
+				tx.Rollback()
+			}
+		}()
+		err := tx.Raw("SELECT * FROM book_date WHERE user_book_id = ?", id).Find(&bookdate).Error
+		if err != nil {
+			return err
+		}
+
+		for _, b := range bookdate {
+			err := tx.Raw("SELECT * from cards where card_id = ?", b.CardID).Find(&cards).Error
+			if err != nil {
+				return err
+			}
+		}
+		for _, c := range cards {
+			err := tx.Raw("SELECT * from tags where fk_card_id = ?", c.ID).Find(&tags).Error
+			if err != nil {
+				return err
+			}
+			err = tx.Raw("SELECT * from book_date where fk_card_id = ?", c.ID).Find(&bookdate).Error
+			if err != nil {
+				return err
+			}
+			c.TagsList = tags
+			c.BookDates = bookdate
 		}
 		return nil
 	})
@@ -200,6 +251,14 @@ func (s *ServiceImpl) UpdateCreatorStatus(params *UpdateCreatorStatusParams) err
 	return nil
 }
 
+func (s *ServiceImpl) UpdateBookDatesUser(params *UpdateBookDateUserParams) error {
+	err := s.db.Exec("SELECT update_book_date_user(?, ?)", params.UserID, params.BookID).Error
+	if err != nil {
+		return fmt.Errorf("error during UpdateSpec, err: %w", err)
+	}
+	return nil
+}
+
 func (s *ServiceImpl) AddCard(role string, params *UpdateCard) error {
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		defer func() {
@@ -230,6 +289,21 @@ func (s *ServiceImpl) AddCard(role string, params *UpdateCard) error {
 				return fmt.Errorf("error during UpdateSpec, err: %w", err)
 			}
 		}
+
+		if len(params.BookDates) > 0 {
+			for i, date := range params.BookDates {
+				err = s.db.Exec("CALL update_book_date(?, ?, ?)", params.CardID, date, i).Error
+				if err != nil {
+					return fmt.Errorf("error during UpdateSpec, err: %w", err)
+				}
+			}
+		} else {
+			err = s.db.Exec("DELETE FROM book_date WHERE fk_card_id = ?", params.CardID).Error
+			if err != nil {
+				return fmt.Errorf("error during UpdateSpec, err: %w", err)
+			}
+		}
+
 		return nil
 	})
 	return err

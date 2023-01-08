@@ -4,6 +4,7 @@ import (
 	"cardsService/helpers"
 	"cardsService/repository"
 	"errors"
+	"fmt"
 	"github.com/labstack/echo/v4"
 	"net/http"
 )
@@ -109,6 +110,20 @@ func (s *ServiceImpl) CardsByIdHandler(c echo.Context) error {
 	}
 
 	cards, err := s.repository.GetCardsByUserId(token.UserId)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+	return c.JSON(http.StatusOK, &cards)
+}
+
+func (s *ServiceImpl) CardsByBookDate(c echo.Context) error {
+	authToken := s.getAuthToken(c)
+	token, err := s.tokenService.ParseToken(authToken)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, &EmptyResponse{})
+	}
+
+	cards, err := s.repository.GetBookedCards(token.UserId)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
 	}
@@ -250,6 +265,32 @@ func (s *ServiceImpl) UpdateCreatorStatusHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, &EmptyResponse{})
 }
 
+func (s *ServiceImpl) UpdateBookDateUserHandler(c echo.Context) error {
+	authToken := s.getAuthToken(c)
+	_, err := s.tokenService.ParseToken(authToken)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, &EmptyResponse{})
+	}
+
+	req := &UpdateBookDateUserRequest{}
+	err = c.Bind(&req)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	fmt.Println(req.UserID)
+	fmt.Println(req.BookID)
+	err = s.repository.UpdateBookDatesUser(&repository.UpdateBookDateUserParams{
+		UserID: req.UserID,
+		BookID: req.BookID,
+	})
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, &EmptyResponse{})
+}
+
 func (s *ServiceImpl) UpdateCardsHandler(c echo.Context) error {
 	authToken := s.getAuthToken(c)
 	token, err := s.tokenService.ParseToken(authToken)
@@ -264,8 +305,12 @@ func (s *ServiceImpl) UpdateCardsHandler(c echo.Context) error {
 	}
 
 	tags := make([]string, 0)
+	bookdates := make([]string, 0)
 	for _, t := range req.Tags {
 		tags = append(tags, t.Name)
+	}
+	for _, d := range req.BookDates {
+		bookdates = append(bookdates, d.Date)
 	}
 
 	err = s.repository.AddCard(token.Role, &repository.UpdateCard{
@@ -276,6 +321,7 @@ func (s *ServiceImpl) UpdateCardsHandler(c echo.Context) error {
 		IsActive:    req.IsActive,
 		Cost:        req.Cost,
 		Tags:        tags,
+		BookDates:   bookdates,
 		IsAgreement: req.IsAgreement,
 		Prepayment:  req.Prepayment,
 	})

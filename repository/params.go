@@ -33,6 +33,11 @@ type UpdateCreatorStatusParams struct {
 	UserName string
 }
 
+type UpdateBookDateUserParams struct {
+	UserID string
+	BookID string
+}
+
 type TagsList struct {
 	Name string
 }
@@ -45,6 +50,7 @@ type UpdateCard struct {
 	IsActive    bool
 	Cost        float32
 	Tags        []string
+	BookDates   []string
 	IsAgreement bool
 	Prepayment  bool
 }

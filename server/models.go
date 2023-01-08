@@ -48,18 +48,28 @@ type UpdateCreatorStatusRequest struct {
 	UserName string `json:"user_name"`
 }
 
+type UpdateBookDateUserRequest struct {
+	UserID string `json:"user_id"`
+	BookID string `json:"book_id"`
+}
+
 type TagsList struct {
 	Name string
 }
 
+type BookDates struct {
+	Date string `json:"possible_date"`
+}
+
 type UpdateCardsRequest struct {
-	CardID      string      `json:"card_id"`
-	UserID      string      `json:"user_id"`
-	Title       string      `json:"title"`
-	Description string      `json:"description"`
-	IsActive    bool        `json:"is_active"`
-	Cost        float32     `json:"cost"`
-	Tags        []*TagsList `json:"tags_list"`
-	IsAgreement bool        `json:"is_agreement"`
-	Prepayment  bool        `json:"is_prepayment"`
+	CardID      string       `json:"card_id"`
+	UserID      string       `json:"user_id"`
+	Title       string       `json:"title"`
+	Description string       `json:"description"`
+	IsActive    bool         `json:"is_active"`
+	Cost        float32      `json:"cost"`
+	Tags        []*TagsList  `json:"tags_list"`
+	BookDates   []*BookDates `json:"book_date_list"`
+	IsAgreement bool         `json:"is_agreement"`
+	Prepayment  bool         `json:"is_prepayment"`
 }
