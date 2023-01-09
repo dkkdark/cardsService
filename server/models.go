@@ -58,7 +58,7 @@ type TagsList struct {
 }
 
 type BookDates struct {
-	Date string `json:"possible_date"`
+	Date string `json:"date"`
 }
 
 type UpdateCardsRequest struct {

@@ -36,6 +36,7 @@ type BookDates struct {
 	ID     string `json:"id" gorm:"column:id"`
 	Date   string `json:"date" gorm:"column:possible_date"`
 	CardID string `json:"card_id" gorm:"column:fk_card_id"`
+	UserId string `json:"user_id" gorm:"column:user_book_id"`
 }
 
 type User struct {
