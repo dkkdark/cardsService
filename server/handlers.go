@@ -4,7 +4,6 @@ import (
 	"cardsService/helpers"
 	"cardsService/repository"
 	"errors"
-	"fmt"
 	"github.com/labstack/echo/v4"
 	"net/http"
 )
@@ -102,7 +101,7 @@ func (s *ServiceImpl) CardsHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, &cards)
 }
 
-func (s *ServiceImpl) CardsByIdHandler(c echo.Context) error {
+func (s *ServiceImpl) CardsByTokenHandler(c echo.Context) error {
 	authToken := s.getAuthToken(c)
 	token, err := s.tokenService.ParseToken(authToken)
 	if err != nil {
@@ -116,6 +115,21 @@ func (s *ServiceImpl) CardsByIdHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, &cards)
 }
 
+func (s *ServiceImpl) GetCardsByIDHandler(c echo.Context) error {
+	authToken := s.getAuthToken(c)
+	_, err := s.tokenService.ParseToken(authToken)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, &EmptyResponse{})
+	}
+	id := c.Param("id")
+
+	cards, err := s.repository.GetCardsByUserId(id)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+	return c.JSON(http.StatusOK, &cards)
+}
+
 func (s *ServiceImpl) CardsByBookDate(c echo.Context) error {
 	authToken := s.getAuthToken(c)
 	token, err := s.tokenService.ParseToken(authToken)
@@ -123,11 +137,25 @@ func (s *ServiceImpl) CardsByBookDate(c echo.Context) error {
 		return c.JSON(http.StatusUnauthorized, &EmptyResponse{})
 	}
 
-	cards, err := s.repository.GetBookedCards(token.UserId)
+	cards, err := s.repository.GetBookedCardsByUser(token.UserId)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
 	}
 	return c.JSON(http.StatusOK, &cards)
+}
+
+func (s *ServiceImpl) CardsByUsersBooked(c echo.Context) error {
+	authToken := s.getAuthToken(c)
+	token, err := s.tokenService.ParseToken(authToken)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, &EmptyResponse{})
+	}
+
+	bookInfo, err := s.repository.GetUsersBookedCards(token.UserId)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+	return c.JSON(http.StatusOK, &bookInfo)
 }
 
 func (s *ServiceImpl) UsersHandler(c echo.Context) error {
@@ -278,8 +306,6 @@ func (s *ServiceImpl) UpdateBookDateUserHandler(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, &ErrorResponse{ErrorMessage: err.Error()})
 	}
 
-	fmt.Println(req.UserID)
-	fmt.Println(req.BookID)
 	err = s.repository.UpdateBookDatesUser(&repository.UpdateBookDateUserParams{
 		UserID: req.UserID,
 		BookID: req.BookID,
@@ -306,24 +332,27 @@ func (s *ServiceImpl) UpdateCardsHandler(c echo.Context) error {
 
 	tags := make([]string, 0)
 	bookdates := make([]string, 0)
+	bookdatesUserId := make([]string, 0)
 	for _, t := range req.Tags {
 		tags = append(tags, t.Name)
 	}
 	for _, d := range req.BookDates {
 		bookdates = append(bookdates, d.Date)
+		bookdatesUserId = append(bookdatesUserId, d.UserId)
 	}
 
 	err = s.repository.AddCard(token.Role, &repository.UpdateCard{
-		CardID:      req.CardID,
-		UserID:      req.UserID,
-		Title:       req.Title,
-		Description: req.Description,
-		IsActive:    req.IsActive,
-		Cost:        req.Cost,
-		Tags:        tags,
-		BookDates:   bookdates,
-		IsAgreement: req.IsAgreement,
-		Prepayment:  req.Prepayment,
+		CardID:          req.CardID,
+		UserID:          req.UserID,
+		Title:           req.Title,
+		Description:     req.Description,
+		IsActive:        req.IsActive,
+		Cost:            req.Cost,
+		Tags:            tags,
+		BookDates:       bookdates,
+		BookDatesUserId: bookdatesUserId,
+		IsAgreement:     req.IsAgreement,
+		Prepayment:      req.Prepayment,
 	})
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})

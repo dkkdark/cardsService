@@ -43,14 +43,22 @@ type TagsList struct {
 }
 
 type UpdateCard struct {
-	CardID      string
-	UserID      string
-	Title       string
-	Description string
-	IsActive    bool
-	Cost        float32
-	Tags        []string
-	BookDates   []string
-	IsAgreement bool
-	Prepayment  bool
+	CardID          string
+	UserID          string
+	Title           string
+	Description     string
+	IsActive        bool
+	Cost            float32
+	Tags            []string
+	BookDates       []string
+	BookDatesUserId []string
+	IsAgreement     bool
+	Prepayment      bool
+}
+
+type BookDatesStruct struct {
+	ID     string
+	Date   string
+	CardID string
+	UserId string
 }

@@ -39,6 +39,14 @@ type BookDates struct {
 	UserId string `json:"user_id" gorm:"column:user_book_id"`
 }
 
+type BookedInfo struct {
+	ID       string `json:"id" gorm:"column:card_id"`
+	Title    string `json:"title"`
+	Date     string `json:"date" gorm:"column:possible_date"`
+	UserId   string `json:"user_id" gorm:"column:user_book_id"`
+	Username string `json:"username"`
+}
+
 type User struct {
 	ID             string `json:"id" gorm:"column:user_id"`
 	Username       string `json:"username"`

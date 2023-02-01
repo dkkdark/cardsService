@@ -57,19 +57,22 @@ type TagsList struct {
 	Name string
 }
 
-type BookDates struct {
-	Date string `json:"date"`
+type BookDatesStruct struct {
+	ID     string `json:"id"`
+	Date   string `json:"date"`
+	CardID string `json:"card_id"`
+	UserId string `json:"user_id"`
 }
 
 type UpdateCardsRequest struct {
-	CardID      string       `json:"card_id"`
-	UserID      string       `json:"user_id"`
-	Title       string       `json:"title"`
-	Description string       `json:"description"`
-	IsActive    bool         `json:"is_active"`
-	Cost        float32      `json:"cost"`
-	Tags        []*TagsList  `json:"tags_list"`
-	BookDates   []*BookDates `json:"book_date_list"`
-	IsAgreement bool         `json:"is_agreement"`
-	Prepayment  bool         `json:"is_prepayment"`
+	CardID      string             `json:"card_id"`
+	UserID      string             `json:"user_id"`
+	Title       string             `json:"title"`
+	Description string             `json:"description"`
+	IsActive    bool               `json:"is_active"`
+	Cost        float32            `json:"cost"`
+	Tags        []*TagsList        `json:"tags_list"`
+	BookDates   []*BookDatesStruct `json:"book_date_list"`
+	IsAgreement bool               `json:"is_agreement"`
+	Prepayment  bool               `json:"is_prepayment"`
 }

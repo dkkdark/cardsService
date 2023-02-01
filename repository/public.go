@@ -126,7 +126,7 @@ func (s *ServiceImpl) GetCardsByUserId(id string) ([]*Cards, error) {
 	return cards, err
 }
 
-func (s *ServiceImpl) GetBookedCards(id string) ([]*Cards, error) {
+func (s *ServiceImpl) GetBookedCardsByUser(id string) ([]*Cards, error) {
 	cards := make([]*Cards, 0)
 	tags := make([]*Tags, 0)
 	bookdate := make([]*BookDates, 0)
@@ -137,32 +137,51 @@ func (s *ServiceImpl) GetBookedCards(id string) ([]*Cards, error) {
 				tx.Rollback()
 			}
 		}()
-		err := tx.Raw("SELECT * FROM book_date WHERE user_book_id = ?", id).Find(&bookdate).Error
+		err := tx.Raw("SELECT DISTINCT ON (fk_card_id) * FROM book_date WHERE user_book_id = ?", id).Find(&bookdate).Error
 		if err != nil {
 			return err
 		}
 
 		for _, b := range bookdate {
-			err := tx.Raw("SELECT * from cards where card_id = ?", b.CardID).Find(&cards).Error
+			card := &Cards{}
+			err := tx.Raw("SELECT * FROM cards as cr JOIN payment as pmt on cr.fk_payment_id = pmt.payment_id where card_id = ?", b.CardID).First(&card).Error
 			if err != nil {
 				return err
 			}
-		}
-		for _, c := range cards {
-			err := tx.Raw("SELECT * from tags where fk_card_id = ?", c.ID).Find(&tags).Error
+			err = tx.Raw("SELECT * from tags where fk_card_id = ?", card.ID).Find(&tags).Error
 			if err != nil {
 				return err
 			}
-			err = tx.Raw("SELECT * from book_date where fk_card_id = ?", c.ID).Find(&bookdate).Error
+			err = tx.Raw("SELECT * from book_date where fk_card_id = ?", card.ID).Find(&bookdate).Error
 			if err != nil {
 				return err
 			}
-			c.TagsList = tags
-			c.BookDates = bookdate
+			card.TagsList = tags
+			card.BookDates = bookdate
+
+			cards = append(cards, card)
 		}
 		return nil
 	})
 	return cards, err
+}
+
+func (s *ServiceImpl) GetUsersBookedCards(id string) ([]*BookedInfo, error) {
+	bookInfo := make([]*BookedInfo, 0)
+
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		defer func() {
+			if r := recover(); r != nil {
+				tx.Rollback()
+			}
+		}()
+		err := tx.Raw("SELECT card_id, title, possible_date, user_book_id, username FROM cards JOIN book_date on fk_card_id = card_id JOIN users on user_id = user_book_id where fk_user_id = ? and user_book_id is not null", id).Find(&bookInfo).Error
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	return bookInfo, err
 }
 
 func (s *ServiceImpl) GetUsers() ([]*User, error) {
@@ -292,9 +311,16 @@ func (s *ServiceImpl) AddCard(role string, params *UpdateCard) error {
 
 		if len(params.BookDates) > 0 {
 			for i, date := range params.BookDates {
-				err = s.db.Exec("CALL update_book_date(?, ?, ?)", params.CardID, date, i).Error
-				if err != nil {
-					return fmt.Errorf("error during UpdateSpec, err: %w", err)
+				if params.BookDatesUserId[i] == "" {
+					err = s.db.Exec("CALL update_book_date(?, ?, ?, ?)", params.CardID, date, nil, i).Error
+					if err != nil {
+						return fmt.Errorf("error during UpdateSpec, err: %w", err)
+					}
+				} else {
+					err = s.db.Exec("CALL update_book_date(?, ?, ?, ?)", params.CardID, date, params.BookDatesUserId[i], i).Error
+					if err != nil {
+						return fmt.Errorf("error during UpdateSpec, err: %w", err)
+					}
 				}
 			}
 		} else {
