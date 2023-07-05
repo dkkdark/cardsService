@@ -4,8 +4,12 @@ import (
 	"cardsService/helpers"
 	"cardsService/repository"
 	"errors"
+	"fmt"
 	"github.com/labstack/echo/v4"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 )
 
 func (s *ServiceImpl) AddUserHandler(c echo.Context) error {
@@ -215,6 +219,59 @@ func (s *ServiceImpl) GetAddInfByIDHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, &addInf)
 }
 
+func (s *ServiceImpl) SaveFMCToken(c echo.Context) error {
+	authToken := s.getAuthToken(c)
+	_, err := s.tokenService.ParseToken(authToken)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, &EmptyResponse{})
+	}
+
+	req := &UpdateFCMToken{}
+	err = c.Bind(&req)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	err = s.repository.UpdateFCMToken(&repository.UpdateFCMTokenParams{
+		UserID: req.UserID,
+		Token:  req.Token,
+	})
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, &EmptyResponse{})
+}
+
+func (s *ServiceImpl) SendMessageHandler(c echo.Context) error {
+	authToken := s.getAuthToken(c)
+	_, err := s.tokenService.ParseToken(authToken)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, &EmptyResponse{})
+	}
+
+	req := &MessageRequest{}
+	err = c.Bind(&req)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	fmt.Println(req)
+
+	err = s.repository.SendPush(&repository.MessageStruct{
+		ID:             req.ID,
+		Message:        req.Message,
+		SenderUsername: req.SenderUsername,
+		To:             req.To,
+	})
+	if err != nil {
+		fmt.Println("err", err)
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, &EmptyResponse{})
+}
+
 func (s *ServiceImpl) UpdateSpecHandler(c echo.Context) error {
 	authToken := s.getAuthToken(c)
 	token, err := s.tokenService.ParseToken(authToken)
@@ -315,6 +372,94 @@ func (s *ServiceImpl) UpdateBookDateUserHandler(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, &EmptyResponse{})
+}
+
+func (s *ServiceImpl) UploadImageHandler(c echo.Context) error {
+	authToken := s.getAuthToken(c)
+	token, err := s.tokenService.ParseToken(authToken)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, &EmptyResponse{})
+	}
+
+	// Get the image file from the form data
+	file, err := c.FormFile("pic")
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	// Open the uploaded file
+	src, err := file.Open()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+	defer src.Close()
+
+	path := "images/" + file.Filename
+
+	// Create a new file to save the image to
+	dst, err := os.Create(path)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+	defer dst.Close()
+
+	// Copy the image data to the new file
+	if _, err = io.Copy(dst, src); err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	err = s.repository.UploadImage(&repository.UploadImageParams{
+		ID:   token.UserId,
+		Path: path,
+	})
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, &EmptyResponse{})
+}
+
+func (s *ServiceImpl) GetImage(c echo.Context) error {
+	authToken := s.getAuthToken(c)
+	token, err := s.tokenService.ParseToken(authToken)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, &EmptyResponse{})
+	}
+
+	path, err := s.repository.GetImage(token.UserId)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+	if path == nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: "User doesn't have a profile image"})
+	}
+
+	// Open the file
+	file, err := os.Open(path.Path)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+	defer file.Close()
+
+	// Get the file info
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	// Read the file into a byte array
+	data := make([]byte, fileInfo.Size())
+	if _, err := file.Read(data); err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	// Set the content type header and send the file as JSON
+	contentType := http.DetectContentType(data)
+	return c.JSON(http.StatusOK, &ImageResponse{
+		Filename: filepath.Base(path.Path),
+		Content:  data,
+		Type:     contentType,
+	})
 }
 
 func (s *ServiceImpl) UpdateCardsHandler(c echo.Context) error {

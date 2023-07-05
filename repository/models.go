@@ -57,6 +57,22 @@ type User struct {
 	RoleName       string `json:"role_name" gorm:"column:rolename"`
 }
 
+type Freelancer struct {
+	ID             string          `json:"id"`
+	Username       string          `json:"username"`
+	Image          *Image          `json:"image"`
+	IsCreator      bool            `json:"is_creator"`
+	Specialization *Specialization `json:"specialization"`
+	AddInf         *AdditionalInfo `json:"add_inf"`
+	RoleName       string          `json:"role_name"`
+}
+
+type Image struct {
+	Filename string `json:"filename"`
+	Content  []byte `json:"content"`
+	Type     string `json:"type"`
+}
+
 type Specialization struct {
 	ID          string `json:"id" gorm:"column:spec_id"`
 	Name        string `json:"name" gorm:"column:spec_name"`
@@ -69,4 +85,12 @@ type AdditionalInfo struct {
 	Country     string `json:"country"`
 	City        string `json:"city"`
 	TypeOfWork  string `json:"type_of_work"`
+}
+
+type PathStructure struct {
+	Path string `json:"image" gorm:"column:image"`
+}
+
+type TokenFCMStructure struct {
+	FCMToken string `json:"FCM_token" gorm:"FCM_token"`
 }

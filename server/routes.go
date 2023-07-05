@@ -12,13 +12,21 @@ func (s *ServiceImpl) setupRoutes() {
 	s.server.GET("/booked-cards", s.CardsByBookDate)
 	s.server.GET("/cards-was-booked", s.CardsByUsersBooked)
 	s.server.GET("/users", s.UsersHandler)
+
 	s.server.GET("/user/:id", s.GetUserByIDHandler)
 	s.server.GET("/user", s.GetUserByTokenHandler)
 	s.server.PATCH("/spec", s.GetSpecializationByIDHandler)
 	s.server.PATCH("/add-inf", s.GetAddInfByIDHandler)
+
 	s.server.POST("/update-spec", s.UpdateSpecHandler)
 	s.server.POST("/update-add-inf", s.UpdateAddInfHandler)
 	s.server.POST("/update-creator-status", s.UpdateCreatorStatusHandler)
 	s.server.POST("/update-book-date-user", s.UpdateBookDateUserHandler)
 	s.server.POST("/update-card", s.UpdateCardsHandler)
+
+	s.server.POST("/upload-image", s.UploadImageHandler)
+	s.server.GET("/get-image", s.GetImage)
+
+	s.server.POST("/send-push", s.SendMessageHandler)
+	s.server.POST("/save-fcm-token", s.SaveFMCToken)
 }

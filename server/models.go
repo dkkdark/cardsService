@@ -1,5 +1,7 @@
 package server
 
+import "mime/multipart"
+
 type AddUserRequest struct {
 	MasterPassword string `json:"master_password"`
 	UserName       string `json:"user_name"`
@@ -9,6 +11,12 @@ type AddUserRequest struct {
 }
 
 type EmptyResponse struct{}
+
+type ImageResponse struct {
+	Filename string `json:"filename"`
+	Content  []byte `json:"content"`
+	Type     string `json:"type"`
+}
 
 type ErrorResponse struct {
 	ErrorMessage string `json:"error_message"`
@@ -25,6 +33,18 @@ type LoginResponse struct {
 
 type IDRequest struct {
 	ID string `json:"id"`
+}
+
+type UpdateFCMToken struct {
+	UserID string `json:"user_id"`
+	Token  string `json:"token"`
+}
+
+type MessageRequest struct {
+	ID             string `json:"id"`
+	SenderUsername string `json:"sender_username"`
+	Message        string `json:"message"`
+	To             string `json:"to"`
 }
 
 type UpdateSpecRequest struct {
@@ -75,4 +95,8 @@ type UpdateCardsRequest struct {
 	BookDates   []*BookDatesStruct `json:"book_date_list"`
 	IsAgreement bool               `json:"is_agreement"`
 	Prepayment  bool               `json:"is_prepayment"`
+}
+
+type Image struct {
+	MultipartForm *multipart.Form
 }

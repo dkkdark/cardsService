@@ -12,6 +12,13 @@ type CheckUserParams struct {
 	Password string
 }
 
+type MessageStruct struct {
+	ID             string
+	SenderUsername string
+	Message        string
+	To             string
+}
+
 type UpdateSpecialization struct {
 	UserID          string
 	SpecID          string
@@ -36,6 +43,16 @@ type UpdateCreatorStatusParams struct {
 type UpdateBookDateUserParams struct {
 	UserID string
 	BookID string
+}
+
+type UploadImageParams struct {
+	ID   string
+	Path string
+}
+
+type UpdateFCMTokenParams struct {
+	UserID string
+	Token  string
 }
 
 type TagsList struct {
