@@ -1,7 +1,8 @@
 package server
 
 import (
-	repository2 "cardsService/internal/repository"
+	"cardsService/internal/repository/mongo"
+	"cardsService/internal/repository/postgres"
 	"cardsService/pkg/helpers"
 	"errors"
 	"fmt"
@@ -110,7 +111,7 @@ func (s *ServiceImpl) UpdateCardsHandler(c echo.Context) error {
 		bookdatesUserId = append(bookdatesUserId, d.UserId)
 	}
 
-	err = s.Repository.AddCard(token.Role, &repository2.UpdateCard{
+	err = s.Repository.AddCard(token.Role, &postgres.UpdateCard{
 		CardID:          req.CardID,
 		UserID:          req.UserID,
 		Title:           req.Title,
@@ -144,7 +145,7 @@ func (s *ServiceImpl) AddUserHandler(c echo.Context) error {
 	}
 
 	//save to db (password md5)
-	err = s.Repository.AddUser(&repository2.AddUserParams{
+	err = s.Repository.AddUser(&postgres.AddUserParams{
 		UserName: req.UserName,
 		Password: helpers.GetMD5Hash(req.Password),
 		RoleName: req.RoleName,
@@ -163,12 +164,12 @@ func (s *ServiceImpl) LoginHandler(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, &ErrorResponse{ErrorMessage: err.Error()})
 	}
 
-	userId, role, err := s.Repository.CheckUser(&repository2.CheckUserParams{
+	userId, role, err := s.Repository.CheckUser(&postgres.CheckUserParams{
 		Email:    req.Email,
 		Password: helpers.GetMD5Hash(req.Password),
 	})
 	if err != nil {
-		if errors.Is(err, repository2.ErrNotFound) {
+		if errors.Is(err, postgres.ErrNotFound) {
 			return c.JSON(http.StatusNotFound, &ErrorResponse{ErrorMessage: "user not found"})
 		}
 		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
@@ -282,7 +283,7 @@ func (s *ServiceImpl) UpdateSpecHandler(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, &ErrorResponse{ErrorMessage: err.Error()})
 	}
 
-	err = s.Repository.UpdateSpec(token.Role, &repository2.UpdateSpecialization{
+	err = s.Repository.UpdateSpec(token.Role, &postgres.UpdateSpecialization{
 		UserID:          req.UserID,
 		SpecID:          req.SpecID,
 		SpecName:        req.SpecName,
@@ -308,7 +309,7 @@ func (s *ServiceImpl) UpdateAddInfHandler(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, &ErrorResponse{ErrorMessage: err.Error()})
 	}
 
-	err = s.Repository.UpdateAddInf(token.Role, &repository2.UpdateAddInf{
+	err = s.Repository.UpdateAddInf(token.Role, &postgres.UpdateAddInf{
 		UserID:      req.UserID,
 		AddInfID:    req.AddInfID,
 		Description: req.Description,
@@ -336,7 +337,7 @@ func (s *ServiceImpl) UpdateCreatorStatusHandler(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, &ErrorResponse{ErrorMessage: err.Error()})
 	}
 
-	err = s.Repository.UpdateCreatorStatus(&repository2.UpdateCreatorStatusParams{
+	err = s.Repository.UpdateCreatorStatus(&postgres.UpdateCreatorStatusParams{
 		UserID:   req.UserID,
 		UserName: req.UserName,
 	})
@@ -360,7 +361,7 @@ func (s *ServiceImpl) UpdateBookDateUserHandler(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, &ErrorResponse{ErrorMessage: err.Error()})
 	}
 
-	err = s.Repository.UpdateBookDatesUser(&repository2.UpdateBookDateUserParams{
+	err = s.Repository.UpdateBookDatesUser(&postgres.UpdateBookDateUserParams{
 		UserID: req.UserID,
 		BookID: req.BookID,
 	})
@@ -403,7 +404,7 @@ func (s *ServiceImpl) UploadImageHandler(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
 	}
 
-	err = s.Repository.UploadImage(&repository2.UploadImageParams{
+	err = s.Repository.UploadImage(&postgres.UploadImageParams{
 		ID:   token.UserId,
 		Path: path,
 	})
@@ -468,7 +469,7 @@ func (s *ServiceImpl) SaveFMCToken(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, &ErrorResponse{ErrorMessage: err.Error()})
 	}
 
-	err = s.Repository.UpdateFCMToken(&repository2.UpdateFCMTokenParams{
+	err = s.Repository.UpdateFCMToken(&postgres.UpdateFCMTokenParams{
 		UserID: req.UserID,
 		Token:  req.Token,
 	})
@@ -494,7 +495,7 @@ func (s *ServiceImpl) SendMessageHandler(c echo.Context) error {
 
 	fmt.Println(req)
 
-	err = s.Repository.SendPush(&repository2.MessageStruct{
+	err = s.Repository.SendPush(&postgres.MessageStruct{
 		ID:             req.ID,
 		Message:        req.Message,
 		SenderUsername: req.SenderUsername,
@@ -506,4 +507,114 @@ func (s *ServiceImpl) SendMessageHandler(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, &EmptyResponse{})
+}
+
+// Purchases Handlers
+
+func (s *ServiceImpl) GetPurchasesByCategoryHandler(c echo.Context) error {
+	authToken := s.GetAuthToken(c)
+	_, err := s.TokenService.ParseToken(authToken)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, &EmptyResponse{})
+	}
+
+	category := c.Param("category")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	food, err := s.MongoClient.FindPurchaseByCategory(category)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, &food)
+}
+
+func (s *ServiceImpl) GetPurchasesByNameHandler(c echo.Context) error {
+	authToken := s.GetAuthToken(c)
+	_, err := s.TokenService.ParseToken(authToken)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, &EmptyResponse{})
+	}
+
+	name := c.Param("name")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	food, err := s.MongoClient.FindPurchaseByName(name)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, &food)
+}
+
+func (s *ServiceImpl) GetPurchasesByPriceHandler(c echo.Context) error {
+	authToken := s.GetAuthToken(c)
+	_, err := s.TokenService.ParseToken(authToken)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, &EmptyResponse{})
+	}
+
+	req := &CostRequest{}
+	err = c.Bind(&req)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	food, err := s.MongoClient.FilterPurchasesByCost(&mongo.CostParams{
+		LowCost:  req.LowCost,
+		HighCost: req.HighCost,
+	})
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, &food)
+}
+
+func (s *ServiceImpl) AddPurchaseToCartHandler(c echo.Context) error {
+	authToken := s.GetAuthToken(c)
+	_, err := s.TokenService.ParseToken(authToken)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, &EmptyResponse{})
+	}
+
+	req := &AddToCartRequest{}
+	err = c.Bind(&req)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	err = s.MongoClient.AddPurchaseToCart(&mongo.AddToCartParams{
+		UserID:     req.UserID,
+		PurchaseID: req.PurchaseID,
+	})
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, &EmptyResponse{})
+}
+
+func (s *ServiceImpl) GetCartCostHandler(c echo.Context) error {
+	authToken := s.GetAuthToken(c)
+	_, err := s.TokenService.ParseToken(authToken)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, &EmptyResponse{})
+	}
+
+	id := c.Param("id")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	cost, err := s.MongoClient.CountCartCost(id)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, &ErrorResponse{ErrorMessage: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, &cost.Sum)
 }

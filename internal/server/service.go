@@ -1,7 +1,8 @@
 package server
 
 import (
-	"cardsService/internal/repository"
+	"cardsService/internal/repository/mongo"
+	"cardsService/internal/repository/postgres"
 	"cardsService/internal/token"
 	"github.com/labstack/echo/v4"
 )
@@ -9,17 +10,19 @@ import (
 type ServiceImpl struct {
 	server         *echo.Echo
 	httpPort       string
-	Repository     *repository.ServiceImpl
+	Repository     *postgres.ServiceImpl
+	MongoClient    *mongo.ServiceImpl
 	TokenService   *token.ServiceImpl
 	masterPassword string
 }
 
-func New(httpPort string, repository *repository.ServiceImpl,
+func New(httpPort string, repository *postgres.ServiceImpl, client *mongo.ServiceImpl,
 	tokenService *token.ServiceImpl,
 	masterPassword string) *ServiceImpl {
 	service := &ServiceImpl{
 		httpPort:       httpPort,
 		Repository:     repository,
+		MongoClient:    client,
 		TokenService:   tokenService,
 		masterPassword: masterPassword,
 	}

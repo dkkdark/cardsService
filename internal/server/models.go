@@ -100,3 +100,13 @@ type UpdateCardsRequest struct {
 type Image struct {
 	MultipartForm *multipart.Form
 }
+
+type CostRequest struct {
+	LowCost  int `json:"low_cost"`
+	HighCost int `json:"high_cost"`
+}
+
+type AddToCartRequest struct {
+	UserID     string `json:"user_id"`
+	PurchaseID string `json:"purchase_id"`
+}

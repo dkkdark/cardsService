@@ -9,3 +9,6 @@ first_database_config:
   password: 135274
   db_name: tasks_db
   db_connection_type: postgres
+second_database_config:
+  host: localhost
+  port: 27017

@@ -26,4 +26,10 @@ func (s *ServiceImpl) setupRoutes() {
 
 	s.server.POST("/send-push", s.SendMessageHandler)
 	s.server.POST("/save-fcm-token", s.SaveFMCToken)
+
+	s.server.GET("/get-purchases-by-category/:category", s.GetPurchasesByCategoryHandler)
+	s.server.GET("/get-purchases-by-name/:name", s.GetPurchasesByNameHandler)
+	s.server.GET("/get-purchases-by-price", s.GetPurchasesByPriceHandler)
+	s.server.POST("/add-purchases-to-cart", s.AddPurchaseToCartHandler)
+	s.server.GET("/get-cart-cost/:id", s.GetCartCostHandler)
 }
