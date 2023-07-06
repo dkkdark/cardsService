@@ -1,0 +1,11 @@
+connection:
+  host: localhost
+  port: 80
+  master_password: 135274
+first_database_config:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: 135274
+  db_name: tasks_db
+  db_connection_type: postgres

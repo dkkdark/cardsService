@@ -1,17 +1,22 @@
 package main
 
 import (
-	"cardsService/config"
-	"cardsService/repository"
-	srv "cardsService/server"
-	"cardsService/token"
+	"cardsService/internal/config"
+	"cardsService/internal/repository"
+	srv "cardsService/internal/server"
+	"cardsService/internal/token"
+	"fmt"
 	"log"
 )
 
 func main() {
+	cfg := config.GetConfigs()
+	connStr := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable",
+		cfg.FirstDatabaseConfig.User, cfg.FirstDatabaseConfig.Password, cfg.FirstDatabaseConfig.Host, cfg.FirstDatabaseConfig.DbName)
+
 	serviceRepository, err := repository.New(&repository.InitParams{
-		DBConnection: config.DBConnection,
-		DBType:       config.DBConnectionType,
+		DBConnection: connStr,
+		DBType:       cfg.FirstDatabaseConfig.DBConnectionType,
 	})
 	if err != nil {
 		log.Fatalf("error init repository, err: %+v", err)
@@ -19,6 +24,6 @@ func main() {
 
 	tokenService := token.New(config.PublicKey, config.PrivateKey)
 
-	server := srv.New(config.HTTPPort, serviceRepository, tokenService, config.MasterPassword)
+	server := srv.New(cfg.Connection.HTTPPort, serviceRepository, tokenService, cfg.Connection.MasterPassword)
 	server.StartServer()
 }
